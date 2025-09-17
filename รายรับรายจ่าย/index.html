@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>📅 บันทึกรายรับ-รายจ่าย</title>
+  <style>
+    body {
+      font-family: "Tahoma", sans-serif;
+      background: linear-gradient(120deg, #fffbe6, #ffe0b2);
+      text-align: center;
+      padding: 30px;
+    }
+
+    h1 {
+      color: #ff6600;
+      margin-bottom: 20px;
+      text-shadow: 1px 1px 3px #ffa500;
+    }
+
+    .box {
+      margin: 20px auto;
+      padding: 20px;
+      width: 380px;
+      background: #fff3e0;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      transition: transform 0.2s;
+    }
+    .box:hover { transform: translateY(-3px); }
+
+    input, select, button {
+      margin: 8px 0;
+      padding: 10px;
+      width: 90%;
+      border: none;
+      border-radius: 8px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+      font-size: 16px;
+    }
+
+    button {
+      background: #ff9900;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    button:hover { background: #ff7700; }
+    .reset-btn {
+      background: #ff4444;
+    }
+    .reset-btn:hover { background: #cc0000; }
+
+    .record {
+      text-align: left;
+      margin-top: 12px;
+      border-radius: 8px;
+      padding: 8px;
+      background: #fff8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    .income { color: green; font-weight: bold; }
+    .expense { color: red; font-weight: bold; }
+
+    .day-section {
+      margin-top: 15px;
+      padding: 10px;
+      background: #fff0e0;
+      border-radius: 10px;
+    }
+
+    .summary p { margin: 5px 0; font-size: 16px; }
+    .summary span { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>📅 บันทึกรายรับ-รายจ่าย</h1>
+
+  <div class="box">
+    <input type="date" id="date"><br>
+    <select id="type">
+      <option value="รายรับ">รายรับ</option>
+      <option value="รายจ่าย">รายจ่าย</option>
+    </select><br>
+    <input type="number" id="amount" placeholder="จำนวนเงิน"><br>
+    <input type="text" id="note" placeholder="รายละเอียด"><br>
+    <button onclick="addRecord()">บันทึก</button>
+    <button class="reset-btn" onclick="resetRecords()">รีเซ็ตข้อมูล</button>
+  </div>
+
+  <div class="box">
+    <h3>📋 ประวัติรายวัน</h3>
+    <div id="history"></div>
+  </div>
+
+  <script>
+    let data = JSON.parse(localStorage.getItem("data")) || [];
+
+    render();
+
+    function addRecord() {
+      const date = document.getElementById("date").value;
+      const type = document.getElementById("type").value;
+      const amount = parseFloat(document.getElementById("amount").value);
+      const note = document.getElementById("note").value;
+
+      if (!date) { alert("กรุณาเลือกวันที่"); return; }
+      if (isNaN(amount) || amount <= 0) { alert("กรุณาใส่จำนวนเงินที่ถูกต้อง"); return; }
+
+      data.push({date, type, amount, note});
+      // จัดเรียงวันที่จากเก่าไปใหม่
+      data.sort((a,b)=> new Date(a.date) - new Date(b.date));
+
+      localStorage.setItem("data", JSON.stringify(data));
+
+      document.getElementById("amount").value = "";
+      document.getElementById("note").value = "";
+      render();
+    }
+
+    function render() {
+      const historyDiv = document.getElementById("history");
+      historyDiv.innerHTML = "";
+
+      let balance = 0;
+      let currentDate = "";
+
+      // กลุ่มข้อมูลตามวัน
+      const grouped = {};
+      data.forEach(item => {
+        if (!grouped[item.date]) grouped[item.date] = [];
+        grouped[item.date].push(item);
+      });
+
+      for (const date in grouped) {
+        const dayRecords = grouped[date];
+        let incomeTotal = 0, expenseTotal = 0;
+
+        let dayDiv = document.createElement("div");
+        dayDiv.className = "day-section";
+        let html = `<h4>📅 ${date}</h4>`;
+
+        dayRecords.forEach((r, i) => {
+          html += `<div class="record ${r.type === 'รายรับ' ? 'income' : 'expense'}">
+                    <span>${i+1}. ${r.type} ${r.amount.toFixed(2)} บาท</span> - ${r.note}</div>`;
+          if (r.type === "รายรับ") incomeTotal += r.amount;
+          else expenseTotal += r.amount;
+        });
+
+        balance += incomeTotal - expenseTotal; // คำนวณยอดคงเหลือสะสม
+
+        html += `<div class="summary">
+                  <p>💰 รวมรายรับ: <span>${incomeTotal.toFixed(2)}</span> บาท</p>
+                  <p>💵 รวมรายจ่าย: <span>${expenseTotal.toFixed(2)}</span> บาท</p>
+                  <p>📌 ยอดคงเหลือสะสม: <span>${balance.toFixed(2)}</span> บาท</p>
+                 </div>`;
+
+        dayDiv.innerHTML = html;
+        historyDiv.appendChild(dayDiv);
+      }
+    }
+
+    function resetRecords() {
+      if (confirm("แน่ใจไหมว่าต้องการลบข้อมูลทั้งหมด?")) {
+        data = [];
+        localStorage.removeItem("data");
+        render();
+      }
+    }
+  </script>
+</body>
+</html>
